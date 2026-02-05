@@ -30,5 +30,6 @@ server_scripts {
 }
 
 -- Metadata
-repository '' 
+repository 'https://github.com/smqscripts/smq_vehiclekey' 
+
 discord 'https://discord.gg/z7x6dD3yXm' 
