@@ -38,5 +38,6 @@ Discord: https://discord.gg/z7x6dD3yXm
 
 GitHub: https://github.com/smqscripts/smq_vehiclekey
 
-Video Preview: https://www.youtube.com/watch?v=2VFBPLvbceU
+Video: Preview: https://www.youtube.com/watch?v=2VFBPLvbceU
+
 
