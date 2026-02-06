@@ -1,44 +1,30 @@
-local Config = {
-    Language = 'cz' 
+local lang = {
+    title = 'Vozidlo',
+    locked = 'Zamknuto',
+    unlocked = 'Odemknuto',
+    no_key = 'Nemáš klíče od tohoto vozidla.',
+    bind = 'Zamknout/Odemknout vozidlo'
 }
 
-local Locales = {
-    ['en'] = {
-        title = 'Vehicle',
-        locked = 'Locked',
-        unlocked = 'Unlocked',
-        no_key = 'You do not have keys for this vehicle.',
-        keybind_desc = 'Lock/Unlock Vehicle'
-    },
-    ['cz'] = {
-        title = 'Vozidlo',
-        locked = 'Zamknuto',
-        unlocked = 'Odemknuto',
-        no_key = 'Nemáš klíče od tohoto vozidla.',
-        keybind_desc = 'Zamknout/Odemknout vozidlo'
-    }
-}
-
-local lang = Locales[Config.Language]
-
-Citizen.CreateThread(function()
+-- Načtení animace při startu
+CreateThread(function()
     lib.requestAnimDict('anim@mp_player_intmenu@key_fob@')
 end)
 
-local function toggleLock(vehicle)
-    local plate = GetVehicleNumberPlateText(vehicle):gsub("^%s*(.-)%s*$", "%1")
-    local count = exports.ox_inventory:Search('count', 'vehicle_key', {plate = plate})
+local function toggleVehicleState(veh)
+    local plate = GetVehicleNumberPlateText(veh):gsub("^%s*(.-)%s*$", "%1")
+    local hasItem = exports.ox_inventory:Search('count', 'vehicle_key', {plate = plate})
     
-    if (count or 0) > 0 then
+    if (hasItem or 0) > 0 then
         TaskPlayAnim(PlayerPedId(), 'anim@mp_player_intmenu@key_fob@', 'fob_click', 8.0, 8.0, -1, 48, 1, false, false, false)
         
-        local isLocked = GetVehicleDoorLockStatus(vehicle) > 1
-        local newLockStatus = isLocked and 1 or 2
+        local isLocked = GetVehicleDoorLockStatus(veh) > 1
+        local newState = isLocked and 1 or 2
         
-        SetVehicleDoorsLocked(vehicle, newLockStatus)
-        SetVehicleLights(vehicle, 2)
+        SetVehicleDoorsLocked(veh, newState)
+        SetVehicleLights(veh, 2)
         Wait(200)
-        SetVehicleLights(vehicle, 0)
+        SetVehicleLights(veh, 0)
         
         lib.notify({
             title = lang.title,
@@ -50,21 +36,20 @@ local function toggleLock(vehicle)
     end
 end
 
--- Keybind L
 lib.addKeybind({
-    name = 'lock_vehicle',
-    description = lang.keybind_desc,
+    name = 'veh_lock_system',
+    description = lang.bind,
     defaultKey = 'L',
     onPressed = function()
-        local vehicle = lib.getClosestVehicle(GetEntityCoords(PlayerPedId()), 5.0, false)
-        if vehicle then toggleLock(vehicle) end
+        local veh = lib.getClosestVehicle(GetEntityCoords(PlayerPedId()), 5.0, false)
+        if veh then toggleVehicleState(veh) end
     end
 })
 
 RegisterNetEvent('smg_key:client:requestNearbyKey', function()
-    local vehicle = lib.getClosestVehicle(GetEntityCoords(PlayerPedId()), 5.0, false)
-    if vehicle then
-        TriggerServerEvent('smg_key:server:requestKey', GetVehicleNumberPlateText(vehicle))
+    local veh = lib.getClosestVehicle(GetEntityCoords(PlayerPedId()), 5.0, false)
+    if veh then
+        TriggerServerEvent('smg_key:server:requestKey', GetVehicleNumberPlateText(veh))
     end
 end)
 
@@ -73,8 +58,8 @@ RegisterNetEvent('cd_garage:AddKeys', function(plate)
 end)
 
 RegisterNetEvent('cd_garage:StoreVehicle', function()
-    local veh = GetVehiclePedIsIn(PlayerPedId(), true)
-    if veh ~= 0 then
-        TriggerServerEvent('smg_key:server:removeKey', GetVehicleNumberPlateText(veh))
+    local pedVeh = GetVehiclePedIsIn(PlayerPedId(), true)
+    if pedVeh ~= 0 then
+        TriggerServerEvent('smg_key:server:removeKey', GetVehicleNumberPlateText(pedVeh))
     end
 end)
