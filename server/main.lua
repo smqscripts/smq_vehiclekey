@@ -1,46 +1,49 @@
 local ESX = exports["es_extended"]:getSharedObject()
-local ox_inv = exports.ox_inventory
+local inv = exports.ox_inventory
 
-local function plateTrim(plate)
-    return plate and plate:gsub("^%s*(.-)%s*$", "%1") or nil
-end
+exports('GiveKey', function(id, plate)
+    if not plate then return end
+    local x = ESX.GetPlayerFromId(id)
+    local p = plate:gsub("%s+", "")
 
-local function processKeyGive(target, plate)
-    local xPlayer = ESX.GetPlayerFromId(target)
-    if not xPlayer or not plate then return end
-    
-    local clean = plateTrim(plate)
-    MySQL.scalar('SELECT owner FROM owned_vehicles WHERE plate = ?', {clean}, function(owner)
-        if owner == xPlayer.getIdentifier() then
-            ox_inv:AddItem(target, 'vehicle_key', 1, {
-                plate = clean,
-                description = "Klíč od vozidla: " .. clean
-            })
+    MySQL.scalar('SELECT owner FROM owned_vehicles WHERE plate = ?', {p}, function(owner)
+        if owner and owner == x.getIdentifier() then
+            inv:AddItem(id, 'vehicle_key', 1, { plate = p, description = "Plate: "..p })
         end
     end)
-end
-
-exports('GiveKey', processKeyGive)
-
-RegisterNetEvent('smg_key:server:requestKey', function(plate)
-    processKeyGive(source, plate)
 end)
 
-RegisterNetEvent('smg_key:server:removeKey', function(plate)
-    local _src = source
-    local clean = plateTrim(plate)
-    local playerInv = ox_inv:GetInventoryItems(_src)
+RegisterNetEvent('smg_key:server:giveKey', function(plate)
+    local src = source
+    if not plate then return end
+    local x = ESX.GetPlayerFromId(src)
+    local p = plate:gsub("%s+", "")
+
+    local currentKeys = inv:Search(src, 'count', 'vehicle_key', {plate = p})
+    if currentKeys and currentKeys > 0 then return end
+
+    MySQL.scalar('SELECT owner FROM owned_vehicles WHERE plate = ?', {p}, function(owner)
+        if owner == x.getIdentifier() then
+            inv:AddItem(src, 'vehicle_key', 1, { plate = p, description = "Plate: "..p })
+        end
+    end)
+end)
+
+RegisterNetEvent('smg_key:server:remKey', function(plate)
+    local src = source
+    local p = plate:gsub("%s+", "")
+    local items = inv:GetInventoryItems(src)
     
-    if playerInv then
-        for _, item in pairs(playerInv) do
-            if item.name == 'vehicle_key' and item.metadata and plateTrim(item.metadata.plate) == clean then
-                ox_inv:RemoveItem(_src, 'vehicle_key', 1, nil, item.slot)
-                break 
+    if items then
+        for _, v in pairs(items) do
+            if v.name == 'vehicle_key' and v.metadata and v.metadata.plate == p then
+                inv:RemoveItem(src, 'vehicle_key', 1, nil, v.slot)
+                return
             end
         end
     end
 end)
 
-ESX.RegisterCommand('getkey', 'user', function(xPlayer, args, showError)
-    TriggerClientEvent('smg_key:client:requestNearbyKey', xPlayer.source)
+ESX.RegisterCommand('getkey', 'user', function(x, args)
+    TriggerClientEvent('smg_key:client:reqKey', x.source)
 end, false)
