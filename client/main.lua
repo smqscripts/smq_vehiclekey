@@ -6,7 +6,6 @@ local lang = {
     bind = 'Zamknout/Odemknout vozidlo'
 }
 
--- Načtení animace při startu
 CreateThread(function()
     lib.requestAnimDict('anim@mp_player_intmenu@key_fob@')
 end)
