@@ -1,66 +1,60 @@
-local isBusy = false
+local busy = false
 
-local function handleToggle()
-    if isBusy then return end
+function toggle_veh_lock()
+    if busy then return end
     
     local ped = PlayerPedId()
-    local coords = GetEntityCoords(ped)
-    local vehicle = lib.getClosestVehicle(coords, 4.0, false)
+    local veh = lib.getClosestVehicle(GetEntityCoords(ped), 4.0, false)
 
-    if not vehicle or vehicle == 0 then return end
-    
-    local plate = GetVehicleNumberPlateText(vehicle):gsub("%s+", "")
-    local netId = NetworkGetNetworkIdFromEntity(vehicle)
+    if veh and veh ~= 0 then
+        busy = true
+        
+        lib.requestAnimDict('anim@mp_player_intmenu@key_fob@')
+        TaskPlayAnim(ped, 'anim@mp_player_intmenu@key_fob@', 'fob_click', 8.0, 8.0, -1, 48, 1, false, false, false)
+        
+        TriggerServerEvent('smg_key:server:toggleLock', NetworkGetNetworkIdFromEntity(veh))
 
-    isBusy = true
-    
-    lib.requestAnimDict('anim@mp_player_intmenu@key_fob@')
-    TaskPlayAnim(ped, 'anim@mp_player_intmenu@key_fob@', 'fob_click', 8.0, 8.0, -1, 48, 1, false, false, false)
-    
-    TriggerServerEvent('smg_key:server:toggleLock', netId, plate)
-
-    SetTimeout(800, function() isBusy = false end)
+        Citizen.SetTimeout(800, function()
+            busy = false
+        end)
+    end
 end
 
 lib.addKeybind({
     name = 'veh_lock_sys',
-    description = 'Lock/Unlock Vehicle',
+    description = 'Lock/Unlock',
     defaultKey = 'L',
     onPressed = function()
-        handleToggle()
+        toggle_veh_lock()
     end
 })
 
-RegisterNetEvent('smg_key:client:syncEffects', function(netId)
-    local vehicle = NetToVeh(netId)
-    if DoesEntityExist(vehicle) then
-        SetVehicleLights(vehicle, 2)
-        PlayVehicleDoorOpenSound(vehicle, 0)
-        SetTimeout(200, function()
-            SetVehicleLights(vehicle, 0)
-        end)
+RegisterNetEvent('smg_key:client:syncEffects')
+AddEventHandler('smg_key:client:syncEffects', function(netId)
+    if NetworkDoesNetworkIdExist(netId) then
+        local veh = NetToVeh(netId)
+        if DoesEntityExist(veh) then
+            SetVehicleLights(veh, 2)
+            PlayVehicleDoorOpenSound(veh, 0)
+            Citizen.SetTimeout(200, function()
+                SetVehicleLights(veh, 0)
+            end)
+        end
     end
 end)
 
-AddStateBagChangeHandler('lockStatus', nil, function(bagName, key, value, _unused, replicated)
-    local netId = tonumber(bagName:gsub('entity:', ''))
-    local entity = NetToVeh(netId)
-    if DoesEntityExist(entity) then
-        SetVehicleDoorsLocked(entity, value)
+AddStateBagChangeHandler('lockStatus', nil, function(bag, key, val)
+    local netId = tonumber(bag:gsub('entity:', ''))
+    if not netId then return end
+    local veh = NetToVeh(netId)
+    if DoesEntityExist(veh) then
+        SetVehicleDoorsLocked(veh, val)
     end
 end)
 
 RegisterNetEvent('smg_key:client:reqKey', function()
-    local ped = PlayerPedId()
-    local v = lib.getClosestVehicle(GetEntityCoords(ped), 3.5, false)
-    if v then TriggerServerEvent('smg_key:server:giveKey', GetVehicleNumberPlateText(v)) end
-end)
-
-RegisterNetEvent('cd_garage:AddKeys', function(plate)
-    if plate then TriggerServerEvent('smg_key:server:giveKey', plate) end
-end)
-
-RegisterNetEvent('cd_garage:StoreVehicle', function()
-    local v = GetVehiclePedIsIn(PlayerPedId(), true)
-    if v ~= 0 then TriggerServerEvent('smg_key:server:remKey', GetVehicleNumberPlateText(v)) end
+    local veh = lib.getClosestVehicle(GetEntityCoords(PlayerPedId()), 4.0, false)
+    if DoesEntityExist(veh) then 
+        TriggerServerEvent('smg_key:server:giveKey', NetworkGetNetworkIdFromEntity(veh)) 
+    end
 end)
