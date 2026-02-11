@@ -25,7 +25,7 @@ client_scripts {
 }
 
 server_scripts {
-    '@oxmysql/lib/MySQL.lua', -- Opravuje chybu 'MySQL'
+    '@oxmysql/lib/MySQL.lua', 
     'server/main.lua'
 }
 
@@ -33,3 +33,4 @@ server_scripts {
 repository 'https://github.com/smqscripts/smq_vehiclekey' 
 
 discord 'https://discord.gg/z7x6dD3yXm' 
+
